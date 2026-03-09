@@ -1,6 +1,3 @@
-import re
-import base64
-import zlib
 import os
 
 # আপনার ফাইলগুলোর নাম
@@ -12,23 +9,25 @@ for file in files:
         continue
     
     with open(file, 'r', encoding='utf-8') as f:
-        content = f.read()
+        code = f.read()
         
-    # রেজেক্স দিয়ে base64 পেলোড খুঁজে বের করা
-    match = re.search(r"b'([^']+)'", content)
-    if match:
-        b64_data = match.group(1)
-        try:
-            # Base64 ডিকোড এবং zlib ডিকম্প্রেস করা
-            decoded_bytes = zlib.decompress(base64.b64decode(b64_data))
-            decoded_text = decoded_bytes.decode('utf-8')
+    # কোডের ভেতরের exec কে print এ পরিবর্তন করা
+    if "exec(" in code:
+        modified_code = code.replace("exec(", "print(")
+        
+        # একটি টেম্পোরারি ফাইলে সেভ করে রান করা
+        temp_filename = "temp_" + file
+        with open(temp_filename, 'w', encoding='utf-8') as f:
+            f.write(modified_code)
+        
+        # আউটপুট নতুন ফাইলে সেভ করা
+        out_filename = file.replace('.py', '_decoded.py')
+        os.system(f"python {temp_filename} > {out_filename}")
+        
+        # টেম্প ফাইল মুছে ফেলা
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
             
-            # নতুন ফাইলে সেভ করা
-            new_filename = file.replace('.py', '_decoded.py')
-            with open(new_filename, 'w', encoding='utf-8') as f:
-                f.write(decoded_text)
-            print(f"✅ সফলভাবে ডিকোড হয়েছে: {file} -> {new_filename}")
-        except Exception as e:
-            print(f"❌ ডিকোড করতে সমস্যা হয়েছে {file}: {e}")
+        print(f"✅ সফলভাবে ডিকোড হয়েছে: {file} -> {out_filename}")
     else:
-        print(f"⚠️ {file} ফাইলে কোনো পেলোড পাওয়া যায়নি।")
+        print(f"⚠️ {file} ফাইলে exec() পাওয়া যায়নি।")
